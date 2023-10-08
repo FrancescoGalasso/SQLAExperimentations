@@ -17,24 +17,19 @@ These instructions will help you set up the project on your local machine for de
 
 2. **Set up a virtual environment**:
     ```bash
-    python -m venv myenv
+    virtualenv -p /usr/bin/python3 venv
     ```
 
 3. **Activate the virtual environment**:
 
-   - For Windows:
-     ```bash
-     myenv\Scripts\activate
-     ```
-
    - For MacOS/Linux:
      ```bash
-     source myenv/bin/activate
+     source venv/bin/activate
      ```
 
 4. **Install the required dependencies**:
     ```bash
-    pip install "flask<2.2.0" "sqlalchemy<1.4.0"
+    pip install -r requirements.txt
     ```
 
 ## License
