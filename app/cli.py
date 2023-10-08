@@ -23,12 +23,14 @@ def create_book(title, author):
 def update_book(id, new_title):
     try:
         book = Book.query.get(id)
-        if book:
-            book.title = new_title
-            db.session.commit()
-            click.echo(f'Book with ID {id} updated to {new_title}.')
-        else:
-            click.echo(f'Book with ID {id} not found.')
+
+        if not book:
+            raise ValueError(f'Book with ID {id} not found.')
+
+        book.title = new_title
+        db.session.commit()
+        click.echo(f'Book with ID {id} updated to {new_title}.')
+            
     except Exception as e:
         click.echo(f'Error updating book: {e}')
         db.session.rollback()
