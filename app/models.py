@@ -1,19 +1,26 @@
-from datetime import datetime
-from flask_sqlalchemy import SQLAlchemy
 import datetime
+import json
+
+from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy import event
+from sqlalchemy.orm.attributes import get_history
 
 
 db = SQLAlchemy()
 audits_to_register = []
 
-# class BasicModel(db.Model):
-#     pass
+
+class BaseModel(db.Model):
+    __abstract__ = True  # BaseModel should not be used as a standalone table.
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+
+    def to_dict(self):
+        raise NotImplementedError("Subclasses must implement this method.")
 
 
-class Book(db.Model):
+class Book(BaseModel):
     title = db.Column(db.String(80), nullable=False)
     author = db.Column(db.String(80), nullable=False)
-    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
 
     def to_dict(self):
         """Return the model as a dictionary."""
@@ -24,11 +31,11 @@ class Book(db.Model):
             # 'timestamp': self.timestamp.strftime('%Y-%m-%d %H:%M:%S')
         }
 
-class AuditLog(db.Model):
+
+class AuditLog(BaseModel):
     book_id = db.Column(db.Integer, db.ForeignKey('book.id'), nullable=False)
     action = db.Column(db.String(10), nullable=False)
     timestamp = db.Column(db.DateTime, default=datetime.datetime.utcnow)
-    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     history = db.Column(db.Text)
 
     def to_dict(self):
@@ -41,12 +48,8 @@ class AuditLog(db.Model):
             'history': self.history
         }
 
-# Event listeners #
 
-def configure_listeners(app):
-    from sqlalchemy import event
-    import json
-    from sqlalchemy.orm.attributes import get_history
+def configure_event_listeners(app):
 
     @event.listens_for(db.session, 'after_flush')
     def db_after_flush(session, flush_context):
@@ -79,51 +82,6 @@ def configure_listeners(app):
 
             if isinstance(instance, Book):
                 print('Book added to DB!')
-
-    # @event.listens_for(db.session, 'before_flush')
-    # def db_before_flush(session, flush_context, instances):
-    #     for instance in session.dirty:
-    #         if isinstance(instance, AuditLog):
-    #             continue
-    #         if isinstance(instance, Book):
-    #             history = {}
-    #             if get_history(instance, 'title').has_changes():
-    #                 history['title'] = get_history(instance, 'first_name')
-    #             if get_history(instance, 'author').has_changes():
-    #                 history['author'] = get_history(instance, 'author')
-    #             if len(history):
-    #                 al = AuditLog(
-    #                     # request_id=str(g.request_id),
-    #                     # model_name="user",
-    #                     # original_id=instance.id,
-    #                     # db_event_name="edit",
-    #                     # history=json.dumps(history)
-    #                     book_id=instance.id,
-    #                     action='UPDATE',
-    #                     history=json.dumps(history)
-    #                 )
-    #                 # session.add(al)
-    #                 print(f'history -> {history}')
-    #                 audits_to_register.append(al) 
-
-    #     for instance in session.deleted:
-    #         if isinstance(instance, AuditLog):
-    #             continue
-    #         if isinstance(instance, Book):
-    #             pass
-    #             # history = {
-    #             #     'first_name': instance.first_name,
-    #             #     'last_name': instance.last_name
-    #             # }
-    #             # if len(history):
-    #             #     al = AuditLog(
-    #             #         request_id=str(g.request_id),
-    #             #         model_name="user",
-    #             #         original_id=instance.id,
-    #             #         db_event_name="delete",
-    #             #         history=json.dumps(history)
-    #             #     )
-    #             #     session.add(al)
 
     @event.listens_for(db.session, 'after_commit')
     def db_after_transaction_end(session):
