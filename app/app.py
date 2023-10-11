@@ -1,6 +1,6 @@
 from flask import Flask
 from .cli import init_app as init_cli
-from .models import db, Book, Audit, configure_listeners
+from .models import db, Book, AuditLog, configure_listeners
 
 def create_app():
     app = Flask(__name__)
