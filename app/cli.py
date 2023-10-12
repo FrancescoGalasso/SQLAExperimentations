@@ -339,19 +339,22 @@ class DatabaseCommands:
 
     @classmethod
     def register_commands(cls, app):
-        app.cli.add_command(cls.init_db_command)
-        app.cli.add_command(cls.clear_db_command)
-        app.cli.add_command(cls.reset_db_command)
-        app.cli.add_command(cls.add_sample_books_command)
-        app.cli.add_command(cls.update_books_titles_with_IntegrityError_command)
-        app.cli.add_command(cls.update_books_authors_with_IntegrityError_command)
-        app.cli.add_command(cls.raise_operational_db_error_command)
-        app.cli.add_command(cls.raise_interface_error_command)
-        # app.cli.add_command(cls.update_books_with_exception_command)
-        app.cli.add_command(cls.list_all_command)
-        app.cli.add_command(cls.update_book)
-        app.cli.add_command(cls.create_book)
-        # ... (registra altri comandi)
+        cli_commands = (
+            cls.init_db_command,
+            cls.clear_db_command,
+            cls.reset_db_command,
+            cls.add_sample_books_command,
+            cls.update_books_titles_with_IntegrityError_command,
+            cls.update_books_authors_with_IntegrityError_command,
+            cls.raise_operational_db_error_command,
+            cls.raise_interface_error_command,
+            cls.list_all_command,
+            cls.update_book,
+            cls.create_book
+        )
+
+        for cmd in cli_commands:
+            app.cli.add_command(cmd)
 
 def init_app(app):
     DatabaseCommands.register_commands(app)
