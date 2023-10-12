@@ -151,6 +151,53 @@ class DatabaseCommands:
         db.session.commit = original_commit
 
     @staticmethod
+    def raise_interface_error():
+        """
+        Monkey-patching the db.session commit to raise sqlalchemy.exc.InterfaceError
+
+        https://en.wikipedia.org/wiki/Monkey_patch
+
+        Exception raised for errors that are related to the database interface
+        rather than the database itself.
+        This error is a DBAPI Error and originates from the database driver (DBAPI),
+        not SQLAlchemy itself.
+        The InterfaceError is sometimes raised by drivers in the context of the
+        database connection being dropped, or not being able to connect to the database.
+        """
+
+        book_map_title_to_update = {
+            'Cippalippa A': 'Book Heroes',
+        }
+
+        original_commit = db.session.commit
+
+        def failing_commit():
+            raise sqlalchemy.exc.InterfaceError(
+                "Emulated InterfaceError during commit",
+                params=dict(),
+                orig=None)
+
+        db.session.commit = failing_commit
+
+        for b_title, b_new_title in book_map_title_to_update.items():
+            try:
+                book = Book.query.filter_by(title=b_title).first()
+                if book:
+                    book.title = b_new_title
+                    db.session.commit()
+                    print(f"Updated Book: {book.to_dict()}")
+            except (sqlalchemy.exc.IntegrityError, sqlalchemy.exc.InterfaceError) as sqle:
+                print(sqle)
+                db.session.rollback()
+            except Exception as e:
+                db.session.rollback()
+                print('Exception raised ..')
+                print(e)
+
+        # Restore the original commit method
+        db.session.commit = original_commit
+
+    @staticmethod
     def update_books_with_exception():
         book_map_to_update = {
             'A': 'Cippalippa',
@@ -236,6 +283,13 @@ class DatabaseCommands:
     def raise_operational_db_error_command():
         DatabaseCommands.raise_operational_db_error()
 
+    @staticmethod
+    @click.command('test-4')
+    @with_appcontext
+    def raise_interface_error_command():
+        DatabaseCommands.raise_interface_error()
+    
+
     # @staticmethod
     # @click.command('test-2')
     # @with_appcontext
@@ -292,6 +346,7 @@ class DatabaseCommands:
         app.cli.add_command(cls.update_books_titles_with_IntegrityError_command)
         app.cli.add_command(cls.update_books_authors_with_IntegrityError_command)
         app.cli.add_command(cls.raise_operational_db_error_command)
+        app.cli.add_command(cls.raise_interface_error_command)
         # app.cli.add_command(cls.update_books_with_exception_command)
         app.cli.add_command(cls.list_all_command)
         app.cli.add_command(cls.update_book)
