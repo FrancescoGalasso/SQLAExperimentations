@@ -7,7 +7,7 @@ def create_app():
     app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///app.db'
     db.init_app(app)
 
-    configure_event_listeners(app)
+    configure_event_listeners()
 
     init_cli(app)
 

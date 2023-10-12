@@ -62,7 +62,7 @@ class AuditLog(BaseModel):
             'history': self.history
         }
 
-def configure_event_listeners(app):
+def configure_event_listeners():
 
     @event.listens_for(db.session, 'after_flush')
     def db_after_flush(session, flush_context):
