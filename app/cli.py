@@ -84,6 +84,7 @@ class DatabaseCommands:
                 print(sqle)
                 db.session.rollback()
             except Exception as e:
+                db.session.rollback()
                 print('Exception raised ..')
                 print(traceback.format_exc())
                 print(e)
@@ -107,9 +108,47 @@ class DatabaseCommands:
                 print(sqle)
                 db.session.rollback()
             except Exception as e:
+                db.session.rollback()
                 print('Exception raised ..')
                 print(traceback.format_exc())
                 print(e)
+
+    @staticmethod
+    def raise_operational_db_error():
+        """
+        Monkey-patching the db.session commit to raise sqlite3.OperationalError
+
+        https://en.wikipedia.org/wiki/Monkey_patch
+        """
+
+        book_map_title_to_update = {
+            'Cippalippa A': 'Book Heroes',
+        }
+
+        # Monkey-patch db.session.commit
+        original_commit = db.session.commit
+        def failing_commit():
+            raise sqlite3.OperationalError("Emulated driver error during commit")
+        db.session.commit = failing_commit
+
+        for b_title, b_new_title in book_map_title_to_update.items():
+            try:
+                book = Book.query.filter_by(title=b_title).first()
+                if book:
+                    book.title = b_new_title
+                    db.session.flush()  # force to call hook "after_flush"
+                    db.session.commit()
+                    print(f"Updated Book: {book.to_dict()}")
+            except (sqlalchemy.exc.IntegrityError, sqlite3.IntegrityError) as sqle:
+                print(sqle)
+                db.session.rollback()
+            except Exception as e:
+                db.session.rollback()
+                print('Exception raised ..')
+                print(e)
+
+        # Restore the original function
+        db.session.commit = original_commit
 
     @staticmethod
     def update_books_with_exception():
@@ -191,6 +230,12 @@ class DatabaseCommands:
     def update_books_authors_with_IntegrityError_command():
         DatabaseCommands.update_books_author_with_IntegrityError()
 
+    @staticmethod
+    @click.command('test-3')
+    @with_appcontext
+    def raise_operational_db_error_command():
+        DatabaseCommands.raise_operational_db_error()
+
     # @staticmethod
     # @click.command('test-2')
     # @with_appcontext
@@ -246,6 +291,7 @@ class DatabaseCommands:
         app.cli.add_command(cls.add_sample_books_command)
         app.cli.add_command(cls.update_books_titles_with_IntegrityError_command)
         app.cli.add_command(cls.update_books_authors_with_IntegrityError_command)
+        app.cli.add_command(cls.raise_operational_db_error_command)
         # app.cli.add_command(cls.update_books_with_exception_command)
         app.cli.add_command(cls.list_all_command)
         app.cli.add_command(cls.update_book)
