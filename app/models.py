@@ -18,17 +18,31 @@ class BaseModel(db.Model):
         raise NotImplementedError("Subclasses must implement this method.")
 
 
+class Author(BaseModel):
+    name = db.Column(db.String(80), nullable=False)
+
+    def to_dict(self):
+        """Return the model as a dictionary."""
+        return {
+            'id': self.id,
+            'name': self.name
+        }
+
+
 class Book(BaseModel):
     title = db.Column(db.String(80), nullable=False)
-    author = db.Column(db.String(80), nullable=False)
+    genre = db.Column(db.String(50))
+    author_id = db.Column(db.Integer, db.ForeignKey('author.id'), nullable=False)
+    author = db.relationship('Author')
 
     def to_dict(self):
         """Return the model as a dictionary."""
         return {
             'id': self.id,
             'title': self.title,
-            'author': self.author,
-            # 'timestamp': self.timestamp.strftime('%Y-%m-%d %H:%M:%S')
+            'genre': self.genre,
+            'author_id': self.author_id,
+            'author_name': self.author.name if self.author else None
         }
 
 
@@ -48,7 +62,6 @@ class AuditLog(BaseModel):
             'history': self.history
         }
 
-
 def configure_event_listeners(app):
 
     @event.listens_for(db.session, 'after_flush')
@@ -63,16 +76,27 @@ def configure_event_listeners(app):
             if isinstance(instance, Book):
                 history = {}
                 if get_history(instance, 'title').has_changes():
-                    history['title'] = get_history(instance, 'first_name')
-                if get_history(instance, 'author').has_changes():
-                    history['author'] = get_history(instance, 'author')
+                    changes = get_history(instance, 'title')
+                    old_value = changes.deleted[0] if changes.deleted else None
+                    new_value = changes.added[0] if changes.added else None
+                    history['Book title'] = {'old': old_value, 'new': new_value}
+                if get_history(instance, 'author_id').has_changes():
+                    changes = get_history(instance, 'author_id')
+                    old_author = Author.query.get(changes.deleted[0]) if changes.deleted else None
+                    new_author = Author.query.get(changes.added[0]) if changes.added else None
+
+                    history[f'Book author'] = {
+                        'old': old_author.name if old_author else None,
+                        'new': new_author.name if new_author else None
+                    }
                 if len(history):
+                    print(f'history: {history}')
                     al = AuditLog(
                         book_id=instance.id,
                         action='UPDATE',
                         history=json.dumps(history)
                     )
-                    print(f'history -> {history}')
+                    print(f'history AFTER FLUSH-> {history}')
                     audits_to_register.append(al)
                     print(f'AuditLog: {al.to_dict()}')
 
